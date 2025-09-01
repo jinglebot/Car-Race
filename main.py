@@ -20,7 +20,7 @@ WIN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("WACKY RACERS")
 
 FPS = 60
-PATH = [(176, 133), (116, 78), (60, 135), (72, 478), (306, 729), (388, 707), (407, 558), (496, 478), (597, 566), (598, 677), (667, 738), (742, 661), (739, 408), (680, 364), (452, 367), (398, 315), (457, 259), (684, 270), (740, 177), (675, 76), (331, 78), (280, 129), (283, 367), (228, 419), (175, 358), (176, 256)]
+PATH = [(155, 133), (116, 78), (60, 135), (72, 478), (306, 729), (388, 700), (407, 558), (496, 478), (597, 566), (598, 677), (667, 730), (742, 661), (739, 408), (680, 350), (452, 367), (398, 315), (457, 249), (684, 260), (740, 167), (675, 76), (331, 78), (280, 129), (293, 267), (268, 359), (165, 358), (160, 256)]
 
 class AbstractCar:
     def __init__(self, max_vel, rotation_vel):
@@ -96,15 +96,43 @@ class ComputerCar(AbstractCar):
 
     def draw(self, win):
         super().draw(win)
-        self.draw_points(win)
+        # self.draw_points(win)
 
-    # def move(self):
-    #     if self.current_point >= len(self.path):
-    #         return
+    def calculate_angle(self):
+        target_x, target_y = self.path[self.current_point]
+        x_diff = target_x - self.x
+        y_diff = target_y - self.y
+
+        if y_diff == 0:
+            desired_radian_angle = math.pi/2
+        else:
+            desired_radian_angle = math.atan(x_diff/y_diff)
+
+        if target_y > self.y:
+            desired_radian_angle += math.pi
+
+        difference_in_angle = self.angle - math.degrees(desired_radian_angle)
+        if difference_in_angle >= 180:
+            difference_in_angle -= 360
+
+        if difference_in_angle > 0:
+            self.angle -= min(self.rotation_vel, abs(difference_in_angle))
+        else:
+            self.angle += min(self.rotation_vel, abs(difference_in_angle))    
+
+    def update_path_point(self):
+        target = self.path[self.current_point]
+        rect = pygame.Rect(self.x, self.y, self.img.get_width(), self.img.get_height())
+        if rect.collidepoint(*target):
+            self.current_point += 1
+
+    def move(self):
+        if self.current_point >= len(self.path):
+            return
         
-    #     self.calculate_angle()
-    #     self.update_path_point()
-    #     super().move()
+        self.calculate_angle()
+        self.update_path_point()
+        super().move()
 
 def draw(win, imgs, player_car, computer_car):
     for img,pos in imgs:
@@ -131,6 +159,23 @@ def move_player(player_car):
     if not moved:
         player_car.reduce_speed()
 
+def handle_collision(player_car, computer_car):
+    if player_car.collide(TRACK_BORDER_MASK) != None:
+        player_car.bounce()
+
+    computer_finish_poi_collide = computer_car.collide(FINISH_MASK, *FINISH_POS)
+    if computer_finish_poi_collide != None:
+        player_car.reset()
+        computer_car.reset()
+
+    player_finish_poi_collide = player_car.collide(FINISH_MASK, *FINISH_POS)
+    if player_finish_poi_collide != None:
+        if player_finish_poi_collide == 0:
+            player_car.bounce()
+        else:
+            player_car.reset()
+            computer_car.reset()
+
 
 run = True
 clock = pygame.time.Clock()
@@ -153,16 +198,8 @@ while run:
         #     computer_car.path.append(pos)
 
     move_player(player_car)
+    computer_car.move()
+    handle_collision(player_car, computer_car)
 
-    if player_car.collide(TRACK_BORDER_MASK) != None:
-        player_car.bounce()
-
-    finish_poi_collide = player_car.collide(FINISH_MASK, *FINISH_POS)
-    if finish_poi_collide != None:
-        if finish_poi_collide == 0:
-            player_car.bounce()
-        else:
-            player_car.reset()
-
-print(computer_car.path)
+# print(computer_car.path)
 pygame.quit()
